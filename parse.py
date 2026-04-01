@@ -1,6 +1,3 @@
-from matplotlib.pyplot import gray
-
-
 class ABMFile:
     # * Offset(h)   Size(h)     Hex                         Description
     #   00          5           41 57 18 00 00              "AW..." (Magic number?)
