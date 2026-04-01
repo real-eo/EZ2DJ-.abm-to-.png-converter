@@ -52,5 +52,5 @@ def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
                 convert(abmPath, outputPath)
 
 
-# Usage
+# * Usage
 dirConvert("ez2catch/panel/note/strawberry")

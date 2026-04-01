@@ -1,0 +1,1 @@
+This folder is the resource (input) folder when using relative paths as input

@@ -1,0 +1,1 @@
+This folder is the output folder when using relative paths as output
