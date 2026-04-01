@@ -1,0 +1,2 @@
+Fix:
+- Ensure highest alpha channel value get scaled to 255
