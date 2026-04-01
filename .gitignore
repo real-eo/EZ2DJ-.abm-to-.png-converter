@@ -3,7 +3,7 @@ __pycache__/
 .vscode/
 
 # Ignore resources due to legal reasons
-res/**
+res/*
 
 # Ignore output files, as they are generated and not source code
-out/**
+out/*
