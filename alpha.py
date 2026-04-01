@@ -1,4 +1,4 @@
-from parse import ABMFile, MaskFile
+from parse import ABMFile, ABMMask
 from constants import DIRECTORY
 from PIL import Image
 import os
@@ -17,7 +17,7 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
 
     # Read the file as bytes, and decode pairs of 3 bytes to RGB values.
     abmFile = ABMFile(abmPath)
-    maskFile = MaskFile(
+    maskFile = ABMMask(
         maskPath, 
         normalize=normalizeAlpha, 
         invert=(abmPath != maskPath)                                                    # Invert if not the same file, since self-masking sprites use opposite convention

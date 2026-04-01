@@ -45,7 +45,7 @@ class ABMFile:
         self.pixelData = self.__rawPixelData[:expectedSize]                             # Ensure correct length
 
 
-class MaskFile(ABMFile):
+class ABMMask(ABMFile):
     # * Mask files have the same structure as ABM files, but 
     # * with BGR where (FF FF FF) represents 100% transparency 
     # * and (00 00 00) represents 100% opaqueness. The pixel 
