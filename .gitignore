@@ -2,6 +2,9 @@
 __pycache__/
 .vscode/
 
+# Whitelist README files
+!**/README*
+
 # Ignore resources due to legal reasons
 res/*
 

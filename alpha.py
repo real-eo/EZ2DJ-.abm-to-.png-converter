@@ -4,7 +4,7 @@ from PIL import Image
 import os
 
 
-def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlpha=False):
+def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlpha=True):
     # Normalize resource path in-place
     if (not os.path.isabs(abmPath)
     and not os.path.normpath(abmPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
@@ -17,7 +17,11 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
 
     # Read the file as bytes, and decode pairs of 3 bytes to RGB values.
     abmFile = ABMFile(abmPath)
-    maskFile = MaskFile(maskPath, normalize=normalizeAlpha)
+    maskFile = MaskFile(
+        maskPath, 
+        normalize=normalizeAlpha, 
+        invert=(abmPath != maskPath)                                                    # Invert if not the same file, since self-masking sprites use opposite convention
+    )
 
 
     # Ensure dimensions match
@@ -57,13 +61,68 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
 
 
 
+# TODO: I know this algorithm has some glaring flaws, but i cba to fix it rn
+def _isSingleExtraM(spriteStem: str, maskStem: str) -> bool:
+    return (
+        spriteStem.count("m") == maskStem.count("m") - 1
+        and len(maskStem) == len(spriteStem) + 1
+        and sum(map(ord, maskStem)) - sum(map(ord, spriteStem)) == ord("m")
+    )
+
+
+def _resolveMaskForSprite(spriteFilename: str, fileSet: set[str]) -> str:
+    spriteStem, spriteExt = os.path.splitext(spriteFilename)
+
+    for candidate in sorted(fileSet):
+        if candidate == spriteFilename:                 continue
+
+        candidateStem, candidateExt = os.path.splitext(candidate)
+        if candidateExt.lower() != spriteExt.lower():   continue
+
+        if _isSingleExtraM(spriteStem, candidateStem):  return candidate
+
+    return spriteFilename
+
+
+def dirConvert(dirPath: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True):
+    baseDir = dirPath if os.path.isabs(dirPath) else os.path.join(DIRECTORY.RESOURCES, dirPath)
+
+    for root, _, files in os.walk(baseDir):
+        abmFiles = [f for f in files if f.endswith(".abm")]
+        fileSet = set(abmFiles)
+
+        # First pass: resolve the selected mask for each sprite filename.
+        selectedMasks = {
+            file: _resolveMaskForSprite(file, fileSet)
+            for file in abmFiles
+        }
+
+        # Second pass: only skip files that are actually used as masks for another sprite.
+        usedAsMask = {
+            mask for sprite, mask in selectedMasks.items() if mask != sprite
+        }
+
+        for file in abmFiles:
+            if file in usedAsMask:
+                continue
+
+            abmPath = os.path.join(root, file)
+            maskFile = selectedMasks[file]
+            maskPath = os.path.join(root, maskFile)
+
+            relativePath = os.path.relpath(abmPath, DIRECTORY.RESOURCES)
+            outputPath = os.path.join(outputDir, os.path.splitext(relativePath)[0] + ".png")
+
+            convert(abmPath, maskPath, outputPath, normalizeAlpha=normalizeAlpha)
+
+
+
 # * Usage
-# All files in: "ez2catch\panel\note\strawberry\common"
-
-# All files in: "ez2catch\panel\Catcher1"
-convert("ez2catch/panel/Catcher1/bar0000.abm", "ez2catch/panel/Catcher1/barm0000.abm", "catcher1-0.png", normalizeAlpha=True)
-convert("ez2catch/panel/Catcher1/bar0001.abm", "ez2catch/panel/Catcher1/barm0001.abm", "catcher1-1.png", normalizeAlpha=True)
-
-# All files in: "ez2catch\panel\Catcher2"
-convert("ez2catch/panel/Catcher2/2bar0000.abm", "ez2catch/panel/Catcher2/2barm0000.abm", "catcher2-0.png", normalizeAlpha=True)
-convert("ez2catch/panel/Catcher2/2bar0001.abm", "ez2catch/panel/Catcher2/2barm0001.abm", "catcher2-1.png", normalizeAlpha=True)
+# Converts all sprite ABM files under the folder and uses a paired mask when present.
+dirConvert("ez2catch/panel/Catcher1")
+dirConvert("ez2catch/panel/Catcher2")
+# dirConvert("ez2catch/panel/note/strawberry/common")
+convert("ez2catch/panel/note/strawberry/note_1.abm", 
+        "ez2catch/panel/note/strawberry/note_1.abm", 
+        "ez2catch/panel/note/strawberry/note_1.png"
+)

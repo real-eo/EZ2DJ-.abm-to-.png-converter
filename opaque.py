@@ -36,7 +36,6 @@ def convert(abmPath: str, outputPath=f"output.png"):
     print(f"Saved to {outputPath}")
 
 
-
 # Convert all ABM files in a directory and subdirectories to PNG, maintaining the directory structure in the output directory.
 def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
     baseDir = dirPath if os.path.isabs(dirPath) else os.path.join(DIRECTORY.RESOURCES, dirPath)
@@ -51,5 +50,7 @@ def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
 
                 outputPath = os.path.join(outputDir, os.path.splitext(relativePath)[0] + ".png")
                 convert(abmPath, outputPath)
+
+
 # Usage
 dirConvert("ez2catch/panel/note/strawberry")
