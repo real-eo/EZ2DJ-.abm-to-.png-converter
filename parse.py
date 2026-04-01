@@ -61,7 +61,7 @@ class MaskFile(ABMFile):
     COLOR_MODE = "L"                                                                    # Grayscale (1 byte per pixel)
     COLOR_FORMAT = "L"                                                                  # Grayscale                    
 
-    def __init__(self, filePath, normalize=False):
+    def __init__(self, filePath, invert=True, normalize=False):
         # * Call the parent constructor to read the file and parse the header
         super().__init__(filePath)
 
@@ -69,7 +69,9 @@ class MaskFile(ABMFile):
         gray = self.toGrayscale(self.pixelData)
 
         # ABM mask uses FF=transparent, 00=opaque, opposite of PNG alpha.
-        self.maskData = bytes(255 - v for v in gray)
+        if invert:  self.maskData = bytes(255 - v for v in gray)
+        # While self masking sprites (like combo sprites) use 00=transparent, FF=opaque, same as PNG alpha.
+        else:       self.maskData = gray
 
         if normalize:
             # Normalize the alpha values to the range [0, 255]
