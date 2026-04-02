@@ -22,7 +22,12 @@ def convert(imagePath: str, maskPath: str, outputPath="output.png", normalizeAlp
         raise ValueError("Image and mask dimensions do not match")
 
     if normalizeAlpha:
-        alpha = alpha.point(lambda p: 255 if p > 0 else 0)
+        # Normalize the alpha values to the range [0, 255]
+        minVal = min(alpha.getdata())
+        maxVal = max(alpha.getdata())
+
+        if maxVal > minVal:
+            alpha = alpha.point(lambda p: (p - minVal) * 255 // (maxVal - minVal))
 
     if invertMask:
         alpha = ImageOps.invert(alpha)
@@ -66,5 +71,6 @@ def dirConvert(spriteDir: str, maskDir: str, outputDir=DIRECTORY.OUTPUT, normali
 
 # * Usage
 # Example usage with explicit sprite and mask directories.
-dirConvert("ez2catch/panel/Catcher1", "ez2catch/panel/Catcher1_mask")
-convert("ez2catch/panel/Catcher1/1.png", "ez2catch/panel/Catcher1_mask/1.png", "out/1.png")
+# dirConvert("ez2catch/panel/Catcher1", "ez2catch/panel/Catcher1_mask")
+# convert("ez2catch/panel/Catcher1/1.png", "ez2catch/panel/Catcher1_mask/1.png", "out/1.png")
+convert("png/bar0000.png", "png/barm0000.png", "png/bar0000.png")
