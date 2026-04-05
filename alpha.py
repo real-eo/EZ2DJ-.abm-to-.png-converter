@@ -41,13 +41,17 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
     ).transpose(Image.FLIP_TOP_BOTTOM)                                                  # ABM images are stored upside-down                             
 
     # Add data to alpha channel
-    alpha = Image.frombytes(
-        maskFile.COLOR_MODE,
-        (maskFile.width, maskFile.height),
-        maskFile.maskData,
-        "raw",
-        maskFile.COLOR_FORMAT,
-    ).transpose(Image.FLIP_TOP_BOTTOM)    
+    try:
+        alpha = Image.frombytes(
+            maskFile.COLOR_MODE,
+            (maskFile.width, maskFile.height),
+            maskFile.maskData,
+            "raw",
+            maskFile.COLOR_FORMAT,
+        ).transpose(Image.FLIP_TOP_BOTTOM)
+
+    # If mask is not present, create a fully opaque alpha channel
+    except TypeError:   alpha = Image.new("L", (abmFile.width, abmFile.height), 255)
 
     img.putalpha(alpha)
     
