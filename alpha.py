@@ -67,8 +67,8 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
 # TODO: I know this algorithm has some glaring flaws, but i cba to fix it rn
 def _isSingleExtraM(spriteStem: str, maskStem: str) -> bool:
     return (
-        spriteStem.count("m") == maskStem.count("m") - 1
-        and len(maskStem) == len(spriteStem) + 1
+        spriteStem.count("m") == (maskStem.count("m") - 1)
+        and len(maskStem) == (len(spriteStem) + 1)
         and sum(map(ord, maskStem)) - sum(map(ord, spriteStem)) == ord("m")
     )
 
