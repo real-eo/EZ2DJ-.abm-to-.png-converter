@@ -19,7 +19,8 @@ class ABMFile:
     #   26          4           XX XX 00 00 (?)             Unknown, same value as Offset(h)=2A   
     #   2A          4           XX XX 00 00 (?)             Unknown, same value as Offset(h)=26   
     #   2E          8           00 00 00 00 00 00 00 00     Header padding?             
-    #   36          ... -> EOF  (BB GG RR) (BB GG RR) ...   Pixel data (BGR triplets). NOTE: Files are stored upside-down in BGR, so the first pixel is the bottom-left corner of the image.   
+    #   36          ...         (BB GG RR) (BB GG RR) ...   Pixel data (BGR triplets). NOTE: Files are stored upside-down in BGR, so the first pixel is the bottom-left corner of the image.   
+    #   EOF-02      2                                       Unknown, often 00 00
     
     # * Stats:
     #   Total header size: 0x35 (53) bytes
@@ -29,7 +30,8 @@ class ABMFile:
     # * Class implementation
     BYTE_ORDER = "little"
     COLOR_MODE = ...                 
- 
+
+
     def __init__(self, filePath):
         # Read the file as bytes
         with open(filePath, "rb") as f:
@@ -41,8 +43,8 @@ class ABMFile:
         self.height = int.from_bytes(self.data[8:10], self.BYTE_ORDER)
 
         # Parse pixel data
-        self.__rawPixelData = self.data[0x36:]
         expectedSize = self.width * self.height * (self.bitsPerPixel // 8)              # Calculate expected size based on width, height, and bits per pixel
+        self.__rawPixelData = self.data[0x36:]
         self.pixelData = self.__rawPixelData[:expectedSize]                             # Ensure correct length
 
         # Format-specific processing based on bits per pixel
@@ -50,7 +52,9 @@ class ABMFile:
             # 16 bits: BGR565 
             case 0x10:
                 self.COLOR_MODE = "RGB"                                                 
-                self.COLOR_FORMAT = "BGR565"                                            # BGR565 (5 bits for Blue, 6 bits for Green, 5 bits for Red)
+                self.COLOR_FORMAT = "BGR"                                               # BGR565 (5 bits for Blue, 6 bits for Green, 5 bits for Red)
+
+                self.pixelData = self.BGR565toBGR888(self.pixelData)
             
             # 24 bits: BGR
             case 0x18:                                                                  
@@ -80,6 +84,50 @@ class ABMFile:
             self.padded = True
         else:
             self.padded = False
+
+
+    @staticmethod
+    def BGR565toBGR888(data):
+        """Convert little-endian BGR565 bytes to packed BGR888 bytes."""
+        out = bytearray()
+
+        for i in range(0, len(data) - 1, 2):
+            value = data[i] | (data[i + 1] << 8)
+
+            # BGR565 bit layout: bbbbb gggggg rrrrr
+            blue5 = (value >> 11) & 0x1F
+            green6 = (value >> 5) & 0x3F
+            red5 = value & 0x1F
+
+            blue8 = (blue5 << 3) | (blue5 >> 2)
+            green8 = (green6 << 2) | (green6 >> 4)
+            red8 = (red5 << 3) | (red5 >> 2)
+
+            out.extend((blue8, green8, red8))  # keep output as BGR for Pillow raw decoder
+
+        return bytes(out)
+
+    @staticmethod
+    def RGB555toBGR888(data):
+        """Convert little-endian RGB555/XRGB1555 words to packed BGR888 bytes."""
+        out = bytearray()
+
+        for i in range(0, len(data) - 1, 2):
+            value = data[i] | (data[i + 1] << 8)
+
+            # XRGB1555 / RGB555: [x][rrrrr][ggggg][bbbbb]
+            red5 = (value >> 10) & 0x1F
+            green5 = (value >> 5) & 0x1F
+            blue5 = value & 0x1F
+
+            blue8 = (blue5 << 3) | (blue5 >> 2)
+            green8 = (green5 << 3) | (green5 >> 2)
+            red8 = (red5 << 3) | (red5 >> 2)
+
+            out.extend((blue8, green8, red8))  # BGR for Pillow raw decoder
+
+        return bytes(out)
+ 
 
 
 class ABMMask(ABMFile):
@@ -164,7 +212,7 @@ class ABMMask(ABMFile):
             for i in range(0, len(bgrData), 3)
         )
     
-    @classmethod
+    @staticmethod
     def normalize(data):
         # Normalize the alpha values to the range [0, 255]
         minVal = min(data)

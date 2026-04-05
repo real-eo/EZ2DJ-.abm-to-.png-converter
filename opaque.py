@@ -69,4 +69,4 @@ def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
 
 # * Usage
 # dirConvert("ez2catch/panel/")
-dirConvert("ez2catch/panel/Catcher4/")
+dirConvert("ez2catch/panel/Catcher3/")
