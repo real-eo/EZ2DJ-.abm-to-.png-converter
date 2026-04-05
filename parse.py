@@ -135,7 +135,6 @@ class ABMMask(ABMFile):
         super().__init__(filePath)
 
         # * Convert BGR to grayscale (since all channels are the same, we can just take one of them, but ensure to check that they are indeed the same for all pixels)
-
         gray = self.toGrayscale(self.pixelData)
 
         # ABM mask uses FF=transparent, 00=opaque, opposite of PNG alpha.
