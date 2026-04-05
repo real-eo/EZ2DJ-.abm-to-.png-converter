@@ -126,13 +126,14 @@ def dirConvert(dirPath: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True):
 
 # * Usage
 # Converts all sprite ABM files under the folder and uses a paired mask when present.
+dirConvert("ez2catch")
 # dirConvert("ez2catch/panel/Catcher1")
 # dirConvert("ez2catch/panel/Catcher2")
 # dirConvert("ez2catch/panel/Catcher3")
-dirConvert("ez2catch/panel/Catcher4")
-dirConvert("ez2catch/panel/Catcher5")
-dirConvert("ez2catch/panel/Catcher6")
-dirConvert("ez2catch/panel/Catcher7")
+# dirConvert("ez2catch/panel/Catcher4")
+# dirConvert("ez2catch/panel/Catcher5")
+# dirConvert("ez2catch/panel/Catcher6")
+# dirConvert("ez2catch/panel/Catcher7")
 # dirConvert("ez2catch/panel/note/strawberry/common")
 # convert("ez2catch/panel/note/strawberry/note_1.abm", 
 #         "ez2catch/panel/note/strawberry/note_1.abm", 
