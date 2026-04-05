@@ -83,7 +83,7 @@ class ABMFile:
 
         
         # Check if the pixel data is shorter than expected
-        if len(self.pixelData) < expectedSize:
+        if len(self.__rawPixelData) < expectedSize:
             print(f" Warning! Expected pixel data size {expectedSize} bytes, but got {len(self.pixelData)} bytes. The image may be incomplete or corrupted.")
 
             # Pad with zeros
