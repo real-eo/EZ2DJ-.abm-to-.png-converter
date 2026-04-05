@@ -54,7 +54,7 @@ class ABMFile:
                 self.COLOR_MODE = "RGB"                                                 
                 self.COLOR_FORMAT = "BGR"                                               # BGR565 (5 bits for Blue, 6 bits for Green, 5 bits for Red)
 
-                self.pixelData = self.BGR565toBGR888(self.pixelData)
+                self.pixelData = self.RGB555toBGR888(self.pixelData)
             
             # 24 bits: BGR
             case 0x18:                                                                  
@@ -87,27 +87,6 @@ class ABMFile:
 
 
     @staticmethod
-    def BGR565toBGR888(data):
-        """Convert little-endian BGR565 bytes to packed BGR888 bytes."""
-        out = bytearray()
-
-        for i in range(0, len(data) - 1, 2):
-            value = data[i] | (data[i + 1] << 8)
-
-            # BGR565 bit layout: bbbbb gggggg rrrrr
-            blue5 = (value >> 11) & 0x1F
-            green6 = (value >> 5) & 0x3F
-            red5 = value & 0x1F
-
-            blue8 = (blue5 << 3) | (blue5 >> 2)
-            green8 = (green6 << 2) | (green6 >> 4)
-            red8 = (red5 << 3) | (red5 >> 2)
-
-            out.extend((blue8, green8, red8))  # keep output as BGR for Pillow raw decoder
-
-        return bytes(out)
-
-    @staticmethod
     def RGB555toBGR888(data):
         """Convert little-endian RGB555/XRGB1555 words to packed BGR888 bytes."""
         out = bytearray()
@@ -115,14 +94,15 @@ class ABMFile:
         for i in range(0, len(data) - 1, 2):
             value = data[i] | (data[i + 1] << 8)
 
-            # XRGB1555 / RGB555: [x][rrrrr][ggggg][bbbbb]
+            # Stored on disk as little-endian bytes (low byte first)
+            # Bit layout: [X][RRRRR][GGGGG][BBBBB]  (MSB->LSB)
             red5 = (value >> 10) & 0x1F
             green5 = (value >> 5) & 0x1F
             blue5 = value & 0x1F
 
-            blue8 = (blue5 << 3) | (blue5 >> 2)
-            green8 = (green5 << 3) | (green5 >> 2)
             red8 = (red5 << 3) | (red5 >> 2)
+            green8 = (green5 << 3) | (green5 >> 2)
+            blue8 = (blue5 << 3) | (blue5 >> 2)
 
             out.extend((blue8, green8, red8))  # BGR for Pillow raw decoder
 
