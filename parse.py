@@ -29,12 +29,15 @@ class ABMFile:
 
     # * Class implementation
     BYTE_ORDER = "little"
-    COLOR_MODE = ...                 
+    COLOR_MODE = "RGB"
+    COLOR_FORMAT = "BGR"                                                                # Blue, Green, Red              
 
 
     def __init__(self, filePath):
         # Read the file as bytes
-        with open(filePath, "rb") as f:
+        self.path = filePath
+
+        with open(self.path, "rb") as f:
             self.data = f.read()
 
         # Parse header
@@ -49,35 +52,39 @@ class ABMFile:
 
         # Format-specific processing based on bits per pixel
         match self.bitsPerPixel:
-            # 16 bits: BGR565 
-            case 0x10:
-                self.COLOR_MODE = "RGB"                                                 
-                self.COLOR_FORMAT = "BGR"                                               # BGR565 (5 bits for Blue, 6 bits for Green, 5 bits for Red)
-
-                self.pixelData = self.RGB555toBGR888(self.pixelData)
+            # 16 bits: RGB555 
+            case 0x10:                
+                # // self.COLOR_MODE = "RGB"
+                # // self.COLOR_FORMAT = "BGR"                                               # Blue, Green, Red         
+                self.pixelData = self.RGB555toBGR888(self.pixelData)                    # RGB555 (5 bits for Red, 5 bits for Green, 5 bits for Blue)
             
             # 24 bits: BGR
-            case 0x18:                                                                  
-                self.COLOR_MODE = "RGB"
-                self.COLOR_FORMAT = "BGR"                                               # Blue, Green, Red
+            case 0x18:
+                # // self.COLOR_MODE = "RGB"
+                # // self.COLOR_FORMAT = "BGR"                                               # Blue, Green, Red                                                                  
+                pass
 
             # 32 bits: BGRA
             case 0x20:
-                self.COLOR_MODE = "RGBA"
-                self.COLOR_FORMAT = "BGRA"                                              # Blue, Green, Red, Alpha
+                # // self.COLOR_MODE = "RGBA"
+                # // self.COLOR_FORMAT = "BGRA"                                              # Blue, Green, Red, Alpha
 
-                self.mask = ABMMask.from32bitABM(self)                                  # Extract alpha mask from 32-bit ABM file
-                self.pixelData = bytes(                                                 # Nuke the alpha bytes
-                    self.pixelData[i] if i % 4 != 3 else 255 for i in range(len(self.pixelData))
+                self.alphaChannel = ABMMask.from32bitABM(self)                          # Extract alpha mask from 32-bit ABM file
+                self.pixelData = bytes(                                                 # Nuke the alpha channel from the pixel data
+                    self.pixelData[i]
+                    for i in range(len(self.pixelData))
+                    if i % 4 != 3
                 )
             
             # Unsupported bits per pixel
             case _:
                 raise ValueError(f"Unsupported bits per pixel: {self.bitsPerPixel}")
+
+
         
         # Check if the pixel data is shorter than expected
         if len(self.pixelData) < expectedSize:
-            print(f"Warning: Expected pixel data size {expectedSize} bytes, but got {len(self.pixelData)} bytes. The image may be incomplete or corrupted.")
+            print(f" Warning! Expected pixel data size {expectedSize} bytes, but got {len(self.pixelData)} bytes. The image may be incomplete or corrupted.")
 
             # Pad with zeros
             self.pixelData += bytes(expectedSize - len(self.pixelData))
@@ -128,6 +135,7 @@ class ABMMask(ABMFile):
         super().__init__(filePath)
 
         # * Convert BGR to grayscale (since all channels are the same, we can just take one of them, but ensure to check that they are indeed the same for all pixels)
+
         gray = self.toGrayscale(self.pixelData)
 
         # ABM mask uses FF=transparent, 00=opaque, opposite of PNG alpha.
@@ -149,8 +157,8 @@ class ABMMask(ABMFile):
         and create a new ABMMask instance with the extracted mask data.
         """
 
-        if abmFile.COLOR_MODE != "RGBA":
-            raise ValueError("ABM file must be 32 bits per pixel (BGRA) to extract alpha mask")
+        if abmFile.bitsPerPixel != 0x20:
+            raise ValueError(f"({abmFile.path}) ABM file must be 32 bits per pixel (BGRA) to extract alpha mask")
 
         # Extract alpha channel (4th byte of each pixel)
         alpha = bytes(abmFile.pixelData[i + 3] for i in range(0, len(abmFile.pixelData), 4))

@@ -5,6 +5,9 @@ import os
 
 
 def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlpha=True):
+    print(f"Converting: {abmPath}")
+    print(f"Using mask: {maskPath}")
+
     # Normalize resource path in-place
     if (not os.path.isabs(abmPath)
     and not os.path.normpath(abmPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
@@ -57,7 +60,7 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
     os.makedirs(os.path.dirname(outputPath), exist_ok=True)                             # Ensure output directory exists
     img.save(outputPath)
     
-    print(f"Saved to {outputPath}")
+    print(f"  Saved to: {outputPath}\n")
 
 
 
@@ -119,10 +122,15 @@ def dirConvert(dirPath: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True):
 
 # * Usage
 # Converts all sprite ABM files under the folder and uses a paired mask when present.
-dirConvert("ez2catch/panel/Catcher1")
-dirConvert("ez2catch/panel/Catcher2")
+# dirConvert("ez2catch/panel/Catcher1")
+# dirConvert("ez2catch/panel/Catcher2")
+# dirConvert("ez2catch/panel/Catcher3")
+dirConvert("ez2catch/panel/Catcher4")
+dirConvert("ez2catch/panel/Catcher5")
+dirConvert("ez2catch/panel/Catcher6")
+dirConvert("ez2catch/panel/Catcher7")
 # dirConvert("ez2catch/panel/note/strawberry/common")
-convert("ez2catch/panel/note/strawberry/note_1.abm", 
-        "ez2catch/panel/note/strawberry/note_1.abm", 
-        "ez2catch/panel/note/strawberry/note_1.png"
-)
+# convert("ez2catch/panel/note/strawberry/note_1.abm", 
+#         "ez2catch/panel/note/strawberry/note_1.abm", 
+#         "ez2catch/panel/note/strawberry/note_1.png"
+# )

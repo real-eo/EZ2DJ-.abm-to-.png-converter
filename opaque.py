@@ -4,6 +4,8 @@ from PIL import Image
 import os
 
 def convert(abmPath: str, outputPath=f"output.png"):    
+    print(f"Converting: {abmPath}")
+
     # Normalize resource path in-place
     if (not os.path.isabs(abmPath)
     and not os.path.normpath(abmPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
@@ -45,10 +47,8 @@ def convert(abmPath: str, outputPath=f"output.png"):
     os.makedirs(os.path.dirname(outputPath), exist_ok=True)                             # Ensure output directory exists
     img.save(outputPath)
     
-    # | if abmFile.padded:
-    # |     print(f"Saved to {outputPath}")
+    print(f"  Saved to: {outputPath}\n")
 
-    print(f"Saved to {outputPath}")
 
 
 # Convert all ABM files in a directory and subdirectories to PNG, maintaining the directory structure in the output directory.
@@ -68,5 +68,5 @@ def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
 
 
 # * Usage
-# dirConvert("ez2catch/panel/")
-dirConvert("ez2catch/panel/Catcher3/")
+dirConvert("ez2catch/panel/")
+# dirConvert("ez2catch/panel/Catcher3/")
