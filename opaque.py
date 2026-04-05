@@ -14,6 +14,18 @@ def convert(abmPath: str, outputPath=f"output.png"):
     abmFile = ABMFile(abmPath)
 
 
+    # | DEBUG: Print some info about the ABM file
+    # | print(f"\nABM file: {abmPath}")
+    # | print(f"Width: {abmFile.width}")
+    # | print(f"Height: {abmFile.height}")
+    # | print(f"Color Mode: {abmFile.COLOR_MODE}")
+    # | print(f"Color Format: {abmFile.COLOR_FORMAT}")
+    # | print(f"Pixel data length: {len(abmFile.pixelData)} bytes")
+    # | print("First 10 pixels (BGR):")
+    # | for i in range(min(10, len(abmFile.pixelData) // 3)):
+    # |     b, g, r = abmFile.pixelData[i*3:(i+1)*3]
+    # |     print(f"  Pixel {i}: B={b}, G={g}, R={r}")
+
     # Create image
     img = Image.frombytes(
         abmFile.COLOR_MODE,                                                             # Color mode (3 bytes per pixel)
@@ -33,6 +45,9 @@ def convert(abmPath: str, outputPath=f"output.png"):
     os.makedirs(os.path.dirname(outputPath), exist_ok=True)                             # Ensure output directory exists
     img.save(outputPath)
     
+    # | if abmFile.padded:
+    # |     print(f"Saved to {outputPath}")
+
     print(f"Saved to {outputPath}")
 
 
@@ -53,4 +68,5 @@ def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
 
 
 # * Usage
-dirConvert("ez2catch/panel/note/strawberry")
+# dirConvert("ez2catch/panel/")
+dirConvert("ez2catch/panel/Catcher4/")
