@@ -83,7 +83,7 @@ class ABMFile:
 
         
         # Check if the pixel data is shorter than expected
-        if len(self.__rawPixelData) < expectedSize:
+        if len(self.__rawPixelData) < expectedSize:                                     # ? We use the raw pixel data length here to check for padding, since the formatted pixel data may be shorter due to format-specific processing (e.g. removing alpha channel)
             print(f" Warning! Expected pixel data size {expectedSize} bytes, but got {len(self.pixelData)} bytes. The image may be incomplete or corrupted.")
 
             # Pad with zeros
