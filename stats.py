@@ -1,15 +1,16 @@
 from PIL import Image
-from constants import DIRECTORY
+from src.constants import DIRECTORY
+from pathlib import Path
 import os
 
 
 
-IMG_PATH = r"C:\Users\reale\OneDrive - Akademiet Norge AS\VS code\Python\EZ2CATCH abm to png\out\ez2catch\panel\Catcher4\4bar0000.png"
+IMG_PATH = Path("ez2catch/panel/Catcher4/4bar0000.png")
 BAR_WIDTH = 60
 SHOW_ZERO_ROWS = False                                                                  # True = print all 256 alpha values, False = only values that occur
 
-imgPath = os.path.join(DIRECTORY.OUTPUT, IMG_PATH)
-img = Image.open(imgPath).convert("RGBA")
+imgPath: Path = DIRECTORY.OUTPUT / IMG_PATH
+img: Image.Image = Image.open(imgPath).convert("RGBA")
 a = img.getchannel("A")
 
 mn, mx = a.getextrema()

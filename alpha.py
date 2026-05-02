@@ -1,21 +1,27 @@
-from parse import ABMFile, ABMMask
-from constants import DIRECTORY
+from src.parse import ABMFile, ABMMask
+from src.constants import DIRECTORY
+from pathlib import Path
 from PIL import Image
 import os
 
 
-def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlpha=True):
+def convert(abmPath: (Path | str), maskPath: (Path | str), outputPath: (Path | str)=Path("output.png"), normalizeAlpha=True):
     print(f"Converting: {abmPath}")
     print(f"Using mask: {maskPath}")
 
-    # Normalize resource path in-place
-    if (not os.path.isabs(abmPath)
-    and not os.path.normpath(abmPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
-        abmPath = os.path.join(DIRECTORY.RESOURCES, abmPath)
+    # Convert to Path objects if not already, for easier path manipulations
+    abmPath     = abmPath       if isinstance(abmPath, Path)    else Path(abmPath)
+    maskPath    = maskPath      if isinstance(maskPath, Path)   else Path(maskPath)
+    outputPath  = outputPath    if isinstance(outputPath, Path) else Path(outputPath)
 
-    if (not os.path.isabs(maskPath)
-    and not os.path.normpath(maskPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
-        maskPath = os.path.join(DIRECTORY.RESOURCES, maskPath)
+    # Normalize resource path in-place
+    if not abmPath.is_absolute():
+        try:                abmPath.relative_to(DIRECTORY.RESOURCES)
+        except ValueError:  abmPath = DIRECTORY.RESOURCES / abmPath
+
+    if not maskPath.is_absolute():
+        try:                maskPath.relative_to(DIRECTORY.RESOURCES)
+        except ValueError:  maskPath = DIRECTORY.RESOURCES / maskPath
 
 
     # Read the file as bytes, and decode pairs of 3 bytes to RGB values.
@@ -26,10 +32,10 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
         invert=(abmPath != maskPath)                                                    # Invert if not the same file, since self-masking sprites use opposite convention
     )
 
-
     # Ensure dimensions match
     if (abmFile.width, abmFile.height) != (maskFile.width, maskFile.height):
         raise ValueError("ABM and mask dimensions do not match")
+
 
     # Create image
     img = Image.frombytes(
@@ -55,13 +61,14 @@ def convert(abmPath: str, maskPath: str, outputPath=f"output.png", normalizeAlph
 
     img.putalpha(alpha)
     
-    # Normalize output path in-place
-    if (not os.path.isabs(outputPath)                                                   # If outputPath is not an absolute path, save to output directory
-    and not os.path.normpath(outputPath).startswith(os.path.normpath(DIRECTORY.OUTPUT) + os.sep)):
-        outputPath = os.path.join(DIRECTORY.OUTPUT, outputPath)
 
+    # Normalize output path in-place
+    if not outputPath.is_absolute():                                                    # If outputPath is not an absolute path, save to output directory
+        try:                outputPath.relative_to(DIRECTORY.OUTPUT)
+        except ValueError:  outputPath = DIRECTORY.OUTPUT / outputPath
+    
     # Save    
-    os.makedirs(os.path.dirname(outputPath), exist_ok=True)                             # Ensure output directory exists
+    outputPath.parent.mkdir(parents=True, exist_ok=True)                                # Ensure output directory exists
     img.save(outputPath)
     
     print(f"  Saved to: {outputPath}\n")
@@ -91,17 +98,23 @@ def _resolveMaskForSprite(spriteFilename: str, fileSet: set[str]) -> str:
     return spriteFilename
 
 
-def dirConvert(dirPath: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True):
-    baseDir = dirPath if os.path.isabs(dirPath) else os.path.join(DIRECTORY.RESOURCES, dirPath)
+def dirConvert(dirPath: (Path | str), outputDir: (Path | str)=DIRECTORY.OUTPUT, normalizeAlpha=True):
+    # Convert to Path objects if not already
+    dirPath     = dirPath   if isinstance(dirPath, Path)    else Path(dirPath)
+    outputDir   = outputDir if isinstance(outputDir, Path)  else Path(outputDir)
 
-    for root, _, files in os.walk(baseDir):
-        abmFiles = [f for f in files if f.endswith(".abm")]
-        fileSet = set(abmFiles)
+    # Normalize paths in-place
+    baseDir     = dirPath   if dirPath.is_absolute()        else DIRECTORY.RESOURCES / dirPath
+
+    # Collect unique directories containing ABM files
+    for folder in sorted({p.parent for p in baseDir.rglob("*.abm")}):
+        abmNames = [p.name for p in sorted(folder.glob("*.abm"))]
+        fileSet = set(abmNames)
 
         # First pass: resolve the selected mask for each sprite filename.
         selectedMasks = {
-            file: _resolveMaskForSprite(file, fileSet)
-            for file in abmFiles
+            name: _resolveMaskForSprite(name, fileSet)
+            for name in abmNames
         }
 
         # Second pass: only skip files that are actually used as masks for another sprite.
@@ -109,18 +122,17 @@ def dirConvert(dirPath: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True):
             mask for sprite, mask in selectedMasks.items() if mask != sprite
         }
 
-        for file in abmFiles:
-            if file in usedAsMask:
+        # Final pass: convert each ABM file with its selected mask (which may be itself if no better match was found).
+        for name in abmNames:
+            if name in usedAsMask:
                 continue
 
-            abmPath = os.path.join(root, file)
-            maskFile = selectedMasks[file]
-            maskPath = os.path.join(root, maskFile)
-
-            relativePath = os.path.relpath(abmPath, DIRECTORY.RESOURCES)
-            outputPath = os.path.join(outputDir, os.path.splitext(relativePath)[0] + ".png")
+            abmPath     = folder / name
+            maskPath    = folder / selectedMasks[name]
+            outputPath  = outputDir / abmPath.relative_to(DIRECTORY.RESOURCES).with_suffix(".png")
 
             convert(abmPath, maskPath, outputPath, normalizeAlpha=normalizeAlpha)
+        
 
 
 

@@ -1,22 +1,28 @@
-from constants import DIRECTORY
-from PIL import Image
+from src.constants import DIRECTORY
+from pathlib import Path
 from PIL import ImageOps
+from PIL import Image
 import os
 
 
-def convert(imagePath: str, maskPath: str, outputPath="output.png", normalizeAlpha=True, invertMask=True):
-    # Normalize resource path in-place
-    if (not os.path.isabs(imagePath)
-    and not os.path.normpath(imagePath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
-        imagePath = os.path.join(DIRECTORY.RESOURCES, imagePath)
+def convert(imagePath: (Path | str), maskPath: (Path | str), outputPath: (Path | str)=Path("output.png"), normalizeAlpha=True, invertMask=True):
+    # Convert to Path objects if not already, for easier path manipulations
+    imagePath   = Path(imagePath)   if not isinstance(imagePath, Path)  else imagePath
+    maskPath    = Path(maskPath)    if not isinstance(maskPath, Path)   else maskPath
+    outputPath  = Path(outputPath)  if not isinstance(outputPath, Path) else outputPath
 
-    if (not os.path.isabs(maskPath)
-    and not os.path.normpath(maskPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
-        maskPath = os.path.join(DIRECTORY.RESOURCES, maskPath)
+    # Normalize resource path in-place
+    if not imagePath.is_absolute():
+        try:                imagePath.relative_to(DIRECTORY.RESOURCES)
+        except ValueError:  imagePath = DIRECTORY.RESOURCES / imagePath
+
+    if not maskPath.is_absolute():
+        try:                maskPath.relative_to(DIRECTORY.RESOURCES)
+        except ValueError:  maskPath = DIRECTORY.RESOURCES / maskPath
 
     # Load color image and grayscale mask from separate PNG files.
-    img = Image.open(imagePath).convert("RGBA")
-    alpha = Image.open(maskPath).convert("L")
+    img: Image.Image = Image.open(imagePath).convert("RGBA")
+    alpha: Image.Image = Image.open(maskPath).convert("L")
 
     if img.size != alpha.size:
         raise ValueError("Image and mask dimensions do not match")
@@ -35,37 +41,44 @@ def convert(imagePath: str, maskPath: str, outputPath="output.png", normalizeAlp
     img.putalpha(alpha)
     
     # Normalize output path in-place
-    if (not os.path.isabs(outputPath)                                                   # If outputPath is not an absolute path, save to output directory
-    and not os.path.normpath(outputPath).startswith(os.path.normpath(DIRECTORY.OUTPUT) + os.sep)):
-        outputPath = os.path.join(DIRECTORY.OUTPUT, outputPath)
+    if not outputPath.is_absolute():                                                    # If outputPath is not an absolute path, save to output directory
+        try:                outputPath.relative_to(DIRECTORY.OUTPUT)
+        except ValueError:  outputPath = DIRECTORY.OUTPUT / outputPath
 
     # Save
-    outputDirname = os.path.dirname(outputPath)
-    if outputDirname:
-        os.makedirs(outputDirname, exist_ok=True)
+    outputPath.parent.mkdir(parents=True, exist_ok=True)
     img.save(outputPath)
     
     print(f"Saved to {outputPath}")
 
 
-def dirConvert(spriteDir: str, maskDir: str, outputDir=DIRECTORY.OUTPUT, normalizeAlpha=True, invertMask=True):
-    spriteBase = spriteDir if os.path.isabs(spriteDir) else os.path.join(DIRECTORY.RESOURCES, spriteDir)
-    maskBase = maskDir if os.path.isabs(maskDir) else os.path.join(DIRECTORY.RESOURCES, maskDir)
+def dirConvert(spriteDir: (Path | str), maskDir: (Path | str), outputDir: (Path | str)=DIRECTORY.OUTPUT, normalizeAlpha=True, invertMask=True):
+    # Convert to Path objects
+    spriteDir   = spriteDir if isinstance(spriteDir, Path)  else Path(spriteDir)
+    maskDir     = maskDir   if isinstance(maskDir, Path)    else Path(maskDir)
+    outputDir   = outputDir if isinstance(outputDir, Path)  else Path(outputDir)
 
-    for root, _, files in os.walk(spriteBase):
-        pngFiles = [f for f in files if f.lower().endswith(".png")]
+    # Normalize paths in-place
+    spriteBase  = spriteDir if spriteDir.is_absolute() else DIRECTORY.RESOURCES / spriteDir
+    maskBase    = maskDir   if maskDir.is_absolute()   else DIRECTORY.RESOURCES / maskDir
 
-        for file in pngFiles:
-            imagePath = os.path.join(root, file)
-            relativePath = os.path.relpath(imagePath, spriteBase)
-            maskPath = os.path.join(maskBase, relativePath)
+    # Walk through all PNG files in the sprite directory, find corresponding mask files, and convert them.
+    for imagePath in spriteBase.rglob("*.png"):
+        relativePath = imagePath.relative_to(spriteBase)
+        maskPath = maskBase / relativePath
 
-            if not os.path.exists(maskPath):
-                print(f"Skipping {imagePath}: missing mask {maskPath}")
-                continue
+        if not maskPath.exists():
+            print(f"Skipping {imagePath}: missing mask {maskPath}")
+            continue
 
-            outputPath = os.path.join(outputDir, os.path.splitext(relativePath)[0] + ".png")
-            convert(imagePath, maskPath, outputPath, normalizeAlpha=normalizeAlpha, invertMask=invertMask)
+        outputPath = (outputDir / relativePath).with_suffix(".png")
+        convert(
+            imagePath,
+            maskPath,
+            outputPath,
+            normalizeAlpha=normalizeAlpha,
+            invertMask=invertMask,
+        )
 
 
 

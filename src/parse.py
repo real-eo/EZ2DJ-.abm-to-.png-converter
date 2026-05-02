@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 class ABMFile:
     # * Offset(h)   Size(h)     Hex                         Description
     #   00          2           41 57                       Magic number ("AW") 
@@ -33,10 +36,11 @@ class ABMFile:
     COLOR_FORMAT = "BGR"                                                                # Blue, Green, Red              
 
 
-    def __init__(self, filePath):
-        # Read the file as bytes
-        self.path = filePath
+    def __init__(self, filePath: (Path | str)):
+        # Convert to Path object if not already
+        self.path = Path(filePath) if not isinstance(filePath, Path) else filePath
 
+        # Read the file as bytes
         with open(self.path, "rb") as f:
             self.data = f.read()
 
@@ -130,7 +134,7 @@ class ABMMask(ABMFile):
     COLOR_MODE = "L"                                                                    # Grayscale (1 byte per pixel)
     COLOR_FORMAT = "L"                                                                  # Grayscale                    
 
-    def __init__(self, filePath, invert=True, normalize=False):
+    def __init__(self, filePath: (Path | str), invert=True, normalize=False):
         # * Call the parent constructor to read the file and parse the header
         super().__init__(filePath)
 

@@ -1,15 +1,21 @@
-from parse import ABMFile
-from constants import DIRECTORY
+from src.constants import DIRECTORY
+from src.parse import ABMFile
+from pathlib import Path
 from PIL import Image
 import os
 
-def convert(abmPath: str, outputPath=f"output.png"):    
+def convert(abmPath: (Path | str), outputPath=Path("output.png")):
     print(f"Converting: {abmPath}")
 
+    # Convert to Path objects if not already, for easier path manipulations
+    abmPath     = Path(abmPath)     if not isinstance(abmPath, Path)    else abmPath
+    outputPath  = Path(outputPath)  if not isinstance(outputPath, Path) else outputPath
+
+
     # Normalize resource path in-place
-    if (not os.path.isabs(abmPath)
-    and not os.path.normpath(abmPath).startswith(os.path.normpath(DIRECTORY.RESOURCES) + os.sep)):
-        abmPath = os.path.join(DIRECTORY.RESOURCES, abmPath)
+    if not abmPath.is_absolute():
+        try:                abmPath.relative_to(DIRECTORY.RESOURCES)
+        except ValueError:  abmPath = DIRECTORY.RESOURCES / abmPath
 
     
     # Read the file as bytes, and decode pairs of 3 bytes to RGB values.
@@ -26,12 +32,12 @@ def convert(abmPath: str, outputPath=f"output.png"):
 
 
     # Normalize output path in-place
-    if (not os.path.isabs(outputPath)                                                   # If outputPath is not an absolute path, save to output directory
-    and not os.path.normpath(outputPath).startswith(os.path.normpath(DIRECTORY.OUTPUT) + os.sep)):
-        outputPath = os.path.join(DIRECTORY.OUTPUT, outputPath)
+    if not outputPath.is_absolute():
+        try:                outputPath.relative_to(DIRECTORY.OUTPUT)
+        except ValueError:  outputPath = DIRECTORY.OUTPUT / outputPath
 
     # Save    
-    os.makedirs(os.path.dirname(outputPath), exist_ok=True)                             # Ensure output directory exists
+    outputPath.parent.mkdir(parents=True, exist_ok=True)                                # Ensure output directory exists
     img.save(outputPath)
     
     print(f"  Saved to: {outputPath}\n")
@@ -39,19 +45,21 @@ def convert(abmPath: str, outputPath=f"output.png"):
 
 
 # Convert all ABM files in a directory and subdirectories to PNG, maintaining the directory structure in the output directory.
-def dirConvert(dirPath, outputDir=DIRECTORY.OUTPUT):
-    baseDir = dirPath if os.path.isabs(dirPath) else os.path.join(DIRECTORY.RESOURCES, dirPath)
+def dirConvert(dirPath: (Path | str), outputDir: (Path | str)=DIRECTORY.OUTPUT):
+    # Convert to Path objects if not already, for easier path manipulations
+    dirPath    = dirPath    if isinstance(dirPath, Path)    else Path(dirPath)
+    outputDir  = outputDir  if isinstance(outputDir, Path)  else Path(outputDir)
 
-    for root, _, files in os.walk(baseDir):
-        for file in files:
-            if file.endswith(".abm"):
-                abmPath = os.path.join(root, file)
+    # Normalize paths in-place
+    baseDir     = dirPath   if dirPath.is_absolute()        else DIRECTORY.RESOURCES / dirPath
 
-                # Keep full path under res/ in output
-                relativePath = os.path.relpath(abmPath, DIRECTORY.RESOURCES)
 
-                outputPath = os.path.join(outputDir, os.path.splitext(relativePath)[0] + ".png")
-                convert(abmPath, outputPath)
+    # Walk through all ABM files in the directory and subdirectories
+    for abmPath in baseDir.rglob("*.abm"):
+        # Keep full path under res/ in output
+        relativePath = abmPath.relative_to(DIRECTORY.RESOURCES)
+        outputPath = outputDir / relativePath.with_suffix(".png")
+        convert(abmPath, outputPath)
 
 
 # * Usage
