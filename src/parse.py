@@ -27,7 +27,17 @@ class ABMFile:
     
     # * Stats:
     #   Total header size: 0x35 (53) bytes
-    #   Total data size: (width * height * 3) bytes
+    #   Total data size: (width * height * (bitsPerPixel // 8)) bytes
+
+    # * Catcher headers
+    #  bar0000.abm      (Catcher1): 41 57 18 00 00 00 40 00 40 00 AC 10 00 00 28 00 00 00 E1 CF 00 00 EE 51 00 00 01 00 97 B1 00 00 00 00 02 30 00 00 12 0B 00 00 12 0B 00 00 00 00 00 00 00 00 00 00 
+    # 2bar0000.abm      (Catcher2): 41 57 18 00 00 00 40 00 40 00 AC 10 00 00 28 00 00 00 E1 CF 00 00 EE 51 00 00 01 00 97 B1 00 00 00 00 02 30 00 00 12 0B 00 00 12 0B 00 00 00 00 00 00 00 00 00 00
+    # 3bar0000.abm      (Catcher3): 41 57 10 00 00 00 40 00 40 00 AC 10 00 00 28 00 00 00 E1 CF 00 00 EE 51 00 00 01 00 9F B1 00 00 00 00 02 20 00 00 60 0F 00 00 60 0F 00 00 00 00 00 00 00 00 00 00
+    # 4bar0000.abm      (Catcher4): 41 57 20 00 00 00 5A 00 3C 00 AC 10 00 00 28 00 00 00 FB CF 00 00 92 51 00 00 01 00 AF B1 00 00 00 00 62 54 00 00 60 0F 00 00 60 0F 00 00 00 00 00 00 00 00 00 00
+    # hero0000.abm      (Catcher5): 41 57 10 00 00 00 40 00 40 00 AC 10 00 00 28 00 00 00 E1 CF 00 00 EE 51 00 00 01 00 9F B1 00 00 00 00 02 20 00 00 60 0F 00 00 60 0F 00 00 00 00 00 00 00 00 00 00
+    # princess0000.abm  (Catcher6): 41 57 10 00 00 00 40 00 40 00 AC 10 00 00 28 00 00 00 E1 CF 00 00 EE 51 00 00 01 00 9F B1 00 00 00 00 02 20 00 00 60 0F 00 00 60 0F 00 00 00 00 00 00 00 00 00 00
+    # smin_0001.abm     (Catcher7): 41 57 18 00 00 00 5A 00 3C 00 AC 10 00 00 28 00 00 00 FB CF 00 00 92 51 00 00 01 00 97 B1 00 00 00 00 C0 3F 00 00 13 0B 00 00 13 0B 00 00 00 00 00 00 00 00 00 00
+
 
 
     # * Class implementation
@@ -45,14 +55,48 @@ class ABMFile:
             self.data = f.read()
 
         # Parse header
-        self.bitsPerPixel = int.from_bytes(self.data[2:6], self.BYTE_ORDER)
-        self.width = int.from_bytes(self.data[6:8], self.BYTE_ORDER)
-        self.height = int.from_bytes(self.data[8:10], self.BYTE_ORDER)
+        self.bitsPerPixel = int.from_bytes(self.data[0x02:0x06], self.BYTE_ORDER)
+        self.width = int.from_bytes(self.data[0x06:0x08], self.BYTE_ORDER)
+        self.height = int.from_bytes(self.data[0x08:0x0A], self.BYTE_ORDER)
 
         # Parse pixel data
-        expectedSize = self.width * self.height * (self.bitsPerPixel // 8)              # Calculate expected size based on width, height, and bits per pixel
-        self.__rawPixelData = self.data[0x36:]
-        self.pixelData = self.__rawPixelData[:expectedSize]                             # Ensure correct length
+        self.__strided = self.data[0x36:]                                               # ? Rows padded to alignment boundary (what's on disk)
+        self.__packed = bytearray()                                                     # ? Rows tightly back-to-back with no padding (what Pillow expects)                      
+
+        bytesPerPixel = self.bitsPerPixel // 8
+        bytesPerRow = self.width * bytesPerPixel                                        # Calculate the number of bytes per row based on the image width and bytes per pixel
+        stridedRowSize = ((bytesPerRow + 3) // 4) * 4                                   # Rows are padded to the next multiple of 4 bytes
+
+        # ? Unsure if this is correct
+        # ? payloadSize26 = int.from_bytes(self.data[0x26:0x2A], self.BYTE_ORDER)
+        # ? payloadSize2a = int.from_bytes(self.data[0x2A:0x2E], self.BYTE_ORDER)
+        # ? print(payloadSize26, payloadSize2a)
+
+
+        # Strip padding
+        self.padded = False                                                             # Flag to indicate if any rows were padded 
+
+        # ? The loop reads strided chunks of `stridedRowSize` sized bytes from `self.__strided`, 
+        # ? and only keeps the first `bytesPerRow` of each, building up the packed result.
+        for y in range(self.height): 
+            start = y * stridedRowSize
+            end = start + bytesPerRow
+            row = self.__strided[start:end]
+
+            # Check if the pixel data for the current row is shorter than expected
+            if len(row) < bytesPerRow:
+                print(f" Warning! The required amount of raw pixel data per row required " + 
+                                f"is {bytesPerRow} bytes, but got {len(row)} bytes for " + 
+                                f"row {y}. The image may be incomplete or corrupted.")
+                
+                # Pad with zeros
+                row = row + bytes(bytesPerRow - len(row))
+                self.padded = True
+
+            self.__packed.extend(row)                                                   # Append the stripped row to the packed pixel data
+
+        self.pixelData = bytes(self.__packed)                                           # Final packed pixel data with padding stripped
+   
 
         # Format-specific processing based on bits per pixel
         match self.bitsPerPixel:
@@ -84,18 +128,7 @@ class ABMFile:
             case _:
                 raise ValueError(f"Unsupported bits per pixel: {self.bitsPerPixel}")
 
-
-        
-        # Check if the pixel data is shorter than expected
-        if len(self.__rawPixelData) < expectedSize:                                     # ? We use the raw pixel data length here to check for padding, since the formatted pixel data may be shorter due to format-specific processing (e.g. removing alpha channel)
-            print(f" Warning! Expected pixel data size {expectedSize} bytes, but got {len(self.pixelData)} bytes. The image may be incomplete or corrupted.")
-
-            # Pad with zeros
-            self.pixelData += bytes(expectedSize - len(self.pixelData))
-            self.padded = True
-        else:
-            self.padded = False
-
+            
 
     @staticmethod
     def RGB555toBGR888(data):
